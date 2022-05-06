@@ -138,9 +138,8 @@ mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
 
 The cross-validation plot can be viewed in the appendix.
 
-The value of degree that maximizes the cross-validated AUC is 
-`r mars.fit$bestTune$degree`, and the value of nprune that maximizes the
-cross-validated AUC is `r mars.fit$bestTune$nprune`.
+The values of degree and nprune that maximize the cross-validated AUC are 
+`r mars.fit$bestTune$degree` and `r mars.fit$bestTune$nprune`.
 
 Let's examine the model that maximizes the cross-validated AUC.
 ```{r}
@@ -202,12 +201,9 @@ svmr.fit <- train(stroke ~ . ,
 
 The cross-validation plot can be viewed in the appendix.
 
-Let's get the values of sigma and cost that maximize the cross-validated AUC.
-```{r}
-svmr.fit$bestTune %>% 
-  as_tibble() %>% 
-  knitr::kable(col.names = c("Sigma", "Cost"))
-```
+The values of C and sigma that maximize the cross-validated AUC are
+`r round(svmr.fit$bestTune$C, 3)` and
+`r round(svmr.fit$bestTune$sigma, 5)`.
 
 Let's get the support vector machine with radial kernel that maximizes the cross-validated AUC.
 ```{r}
