@@ -83,7 +83,8 @@ trainData_pp <- as.data.frame(bake(prep, new_data = trainData))
 testData_pp <- as.data.frame(bake(prep, new_data = testData))
 ```
 
-The training data now contains `r nrow(trainData_pp)` rows.
+The training data now contains `r nrow(trainData_pp)` rows. The test data 
+now contains `r nrow(testData_pp)` rows.
 
 ## Model Fitting
 ```{r}
