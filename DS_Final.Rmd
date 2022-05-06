@@ -138,12 +138,9 @@ mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
 
 The cross-validation plot can be viewed in the appendix.
 
-Let's get the values of degree (the degree of interaction) and nprune (the number of retained terms) that maximize the cross-validated AUC.
-```{r}
-mars.fit$bestTune %>% 
-  as_tibble() %>% 
-  knitr::kable()
-```
+The value of degree that maximizes the cross-validated AUC is 
+`r mars.fit$bestTune$degree`, and the value of nprune that maximizes the
+cross-validated AUC is `r mars.fit$bestTune$nprune`.
 
 Let's examine the model that maximizes the cross-validated AUC.
 ```{r}
