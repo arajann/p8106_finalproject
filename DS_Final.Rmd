@@ -1,0 +1,281 @@
+---
+title: "DS Final"
+output: pdf_document
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(caret)
+library(recipes)
+library(kernlab)
+library(ISLR)
+library(mlbench)
+library(ranger)
+library(gbm)
+library(pdp)
+library(pROC)
+
+```
+
+## Data Cleaning
+To properly analyze the data and build models to make predictions, the first step is to clean the data. The vast majority of the data was already fairly clean and ready for analysis, but I began by reading in the data, cleaning variable names, making categorical data factors, making continuous data of type numeric, and dropping missing values. I also decided to exclude the variable "id" since it will not be relevant to my analysis. 
+```{r, warning = FALSE, include=FALSE}
+# data cleaning
+stroke_data <- read_csv("./data/healthcare-dataset-stroke-data.csv")
+stroke_data <-  janitor::clean_names(stroke_data)
+#stroke_data <- drop_na(stroke_data)
+# Convert BMI to numeric
+stroke_data$bmi <- as.numeric(stroke_data$bmi)
+# imputation - change this
+#stroke_data <- drop_na(stroke_data)
+# change categorical variables to factors
+stroke_data$gender <- ifelse(stroke_data$gender == "Other", "Female", stroke_data$gender)
+stroke_data$gender = as.factor(stroke_data$gender)
+stroke_data$hypertension = as.factor(ifelse(stroke_data$hypertension == 1, "Yes", "No"))
+stroke_data$heart_disease = as.factor(ifelse(stroke_data$heart_disease == 1, "Yes", "No"))
+stroke_data$ever_married = as.factor(stroke_data$ever_married)
+stroke_data$work_type = as.factor(stroke_data$work_type)
+stroke_data$residence_type = as.factor(stroke_data$residence_type)
+stroke_data$smoking_status = as.factor(stroke_data$smoking_status)
+stroke_data$stroke = as.factor(ifelse(stroke_data$stroke == 1, "Yes", "No"))
+# remove id variable
+stroke_data = stroke_data[,2:12]
+# change from tibble to dataframe
+stroke_data = as.data.frame(stroke_data)
+```
+
+The resulting dataset contains `r nrow(stroke_data)` patient records and `r ncol(stroke_data)` columns. The dependent variable is the binary variable "stroke" with response values "Yes" and "No". Other variables include: gender, age, hypertension, heart disease, ever been married, work type, residence type, average glucose level, BMI and smoking status.
+
+# Modeling
+
+To begin the modeling process, I split the data into training (75%) and test (25%) data. 
+```{r, echo=FALSE}
+set.seed(1)
+rowTrain <- createDataPartition(y = stroke_data$stroke, p = .75, list = FALSE)
+
+trainData <- stroke_data[rowTrain, ]
+testData <- stroke_data[-rowTrain, ]
+```
+
+We can examine how many rows contain missing data in the training and test
+datasets.
+```{r}
+nrow_missing_train <- nrow(trainData %>% filter_all(any_vars(is.na(.))))
+nrow_missing_test <- nrow(testData %>% filter_all(any_vars(is.na(.))))
+```
+
+There are `r nrow_missing_train` rows in the training data containing missing
+values, and there are `r nrow_missing_test` rows in the test data containing
+missing values.
+
+## Imputation
+We apply the k nearest neighbor (k = 5) method for imputation where we assume 
+any missing data is missing at random.
+```{r}
+rec <- recipe(stroke ~., data = trainData) %>%
+  step_impute_knn(all_predictors(), neighbors = 5) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors())
+
+prep <- prep(rec, training = trainData)
+trainData_pp <- bake(prep, new_data = trainData)
+testData_pp <- bake(prep, new_data = testData)
+```
+
+The training data now contains `r nrow(trainData_pp)` rows.
+
+## Model Fitting
+```{r}
+ctrl <- trainControl(method = "repeatedcv", 
+                     repeats = 5,
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+```
+
+
+## Penalized Logistic Regression
+The second model I fit to the dataset was Penalized Logistic Regression. 
+```{r, echo=FALSE}
+glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21), 
+                        .lambda = exp(seq(-8, 2, length = 100)))
+
+set.seed(1)
+model.glmn <- train(stroke ~ ., 
+                    data = trainData_pp, 
+                    method = "glmnet",
+                    tuneGrid = glmnGrid,
+                    metric = "ROC",
+                    trControl = ctrl)
+```
+
+The tuning parameter in the penalty term of the model controls its flexibility. I decided to test a grid of tuning parameters. For alpha, since I wanted to use the elastic net method, I created a sequence from 0 to 1. For lambda, I created a sequence of numbers to test different values. The model then selects optimal values from the grid which are: alpha = `r model.glmn$bestTune$alpha` and lambda = `r model.glmn$bestTune$lambda`. To display this visually, I created a plot of the model AUC for various tuning parameters in the grid.
+
+```{r, echo=FALSE}
+myCol <- rainbow(25)
+myPar <- list(superpose.symbol = list(col = myCol),
+superpose.line = list(col = myCol))
+plot(model.glmn, par.settings = myPar, xTrans = log)
+```
+
+4 predictors are included in the final model, as seen when the coefficients are extracted.
+```{r, echo=FALSE}
+coef(model.glmn$finalModel, model.glmn$bestTune$lambda)
+```
+
+These include age, having hypertension, having heart disease and average glucose
+level. This suggests they play important roles in predicting the response.
+
+## MARS
+
+Let's train a MARS model on the imputed training data.
+```{r warning=FALSE, message=FALSE}
+set.seed(1)
+mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
+                  y = pull(trainData_pp, stroke),
+                  preProcess = c("center", "scale"),
+                  method = "earth",
+                  tuneGrid = expand.grid(degree = 1:3,
+                                         nprune = 2:22),
+                  metric = "ROC",
+                  trControl = ctrl)
+```
+
+Let's examine the cross-validation plot.
+```{r}
+ggplot(mars.fit) +
+  theme_bw() +
+  labs(title = "Cross-validated AUC as a function of \n Number of Terms Colored by Degree",
+       x = "Number of Terms",
+       y = "Cross-validated AUC") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Let's get the values of degree (the degree of interaction) and nprune 
+(the number of retained terms) that maximize the cross-validated AUC.
+```{r}
+mars.fit$bestTune %>% 
+  as_tibble() %>% 
+  knitr::kable()
+```
+
+Let's examine the model that maximizes the cross-validated AUC.
+```{r}
+final_model_mars <- coef(mars.fit$finalModel)
+terms_mars <- final_model_mars %>%
+  data.frame() %>%
+  labels() %>%
+  unlist()
+tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) %>%
+  knitr::kable(col.names = c("term", "estimate"))
+```
+
+## SVM with Radial Kernel
+
+Let's train a support vector machine with a radial kernel on the imputed 
+training data.
+```{r}
+ctrl <- trainControl(method = "cv")
+svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
+                         sigma = exp(seq(-8,-1,len=20)))
+set.seed(1)
+svmr.fit <- train(stroke ~ . , 
+                  data = trainData_pp,
+                  method = "svmRadialSigma",
+                  tuneGrid = svmr.grid,
+                  trControl = ctrl)
+```
+
+Let's examine the cross-validation plot.
+```{r}
+myCol<- rainbow(20)
+myPar <- list(superpose.symbol = list(col = myCol),
+              superpose.line = list(col = myCol))
+plot(svmr.fit, highlight = TRUE, par.settings = myPar)
+```
+
+Let's get the values of sigma and cost that maximize the cross-validated
+accuracy.
+```{r}
+svmr.fit$bestTune %>% 
+  as_tibble() %>% 
+  knitr::kable(col.names = c("Sigma", "Cost"))
+```
+
+Let's get the support vector machine with radial kernel that maximizes the 
+cross-validated accuracy.
+```{r}
+svmr.fit$finalModel
+```
+
+## SVM with Linear Kernel
+
+For the next model, we fit was a support vector machine with a linear kernel on the imputed training data.
+```{r}
+set.seed(1)
+svml.fit <- train(stroke ~ . , 
+                  data = trainData_pp,
+                  method = "svmLinear",
+                  tuneGrid = data.frame(
+                    C = exp(seq(-7,2,len = 10))),
+                  metric = "ROC",
+                  trControl = ctrl)
+```
+
+SVM's with a linear kernel contain a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid.
+```{r}
+plot(svml.fit, highlight = TRUE, xTrans = log)
+```
+
+The final SVM with a linear kernel that maximizes the cross-validated accuracy needed is displayed below.
+```{r}
+svml.fit$finalModel
+```
+
+It needed 421 support vectors to fit the line.
+
+As a reference to understand the model better, let's take a look at a variable importance plot
+```{r}
+svm_imp <- varImp(svml.fit, scale = F)
+plot(svm_imp)
+```
+
+
+## Boosting
+
+
+
+```{r}
+gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
+                        interaction.depth = 1:6,
+                        shrinkage = c(0.0005,0.001,0.002),
+                        n.minobsinnode = 1)
+
+set.seed(1)
+
+dat <- trainData_pp[1:11]
+
+gbmA.fit <- train(stroke ~ . ,
+                  stroke_data,
+                  subset = dat,
+                  tuneGrid = gbmA.grid,
+                  trControl = ctrl,
+                  method = "gbm",
+                  distribution = "adaboost",
+                  metric = "ROC",
+                  verbose = FALSE)
+
+
+ggplot(gbmA.fit, highlight = TRUE)
+```
+```{r}
+gbmA.pred <- predict(gbmA.fit, newdata = testData_pp, type = "prob")[,1]
+
+```
+
+```{r}
+roc.gbmA <- roc(testData_pp, gbmA.pred)
+plot(roc.gbmA, add = TRUE, col = 2)
+
+```
+
