@@ -1,5 +1,5 @@
 ---
-title: "DS Final"
+title: "Applying Machine Learning Methods to Predict Stroke"
 output: pdf_document
 ---
 
@@ -292,6 +292,9 @@ modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS")
 legend("bottomright", legend = paste0(modelNames, ": ", round(auc,3)),
 col = 1:2, lwd = 2)
 ```
+
+## Conclusion
+
 
 ## Appendix
 
