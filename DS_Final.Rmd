@@ -5,7 +5,6 @@ output: pdf_document
 
 ```{r}
 library(tidyverse)
-library(here)
 library(caret)
 library(recipes)
 library(kernlab)
@@ -27,11 +26,10 @@ To properly analyze the data and build models to make predictions, the first ste
 # data cleaning
 stroke_data <- read_csv("./data/healthcare-dataset-stroke-data.csv")
 stroke_data <-  janitor::clean_names(stroke_data)
-#stroke_data <- drop_na(stroke_data)
+
 # Convert BMI to numeric
 stroke_data$bmi <- as.numeric(stroke_data$bmi)
-# imputation - change this
-#stroke_data <- drop_na(stroke_data)
+
 # change categorical variables to factors
 stroke_data$gender <- ifelse(stroke_data$gender == "Other", "Female", stroke_data$gender)
 stroke_data$gender = as.factor(stroke_data$gender)
