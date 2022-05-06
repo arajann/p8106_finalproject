@@ -1,11 +1,10 @@
 ---
-title: "DS Final"
+title: "Applying Machine Learning Methods to Predict Stroke"
 output: pdf_document
 ---
 
 ```{r}
 library(tidyverse)
-library(here)
 library(caret)
 library(recipes)
 library(kernlab)
@@ -27,11 +26,10 @@ To properly analyze the data and build models to make predictions, the first ste
 # data cleaning
 stroke_data <- read_csv("./data/healthcare-dataset-stroke-data.csv")
 stroke_data <-  janitor::clean_names(stroke_data)
-#stroke_data <- drop_na(stroke_data)
+
 # Convert BMI to numeric
 stroke_data$bmi <- as.numeric(stroke_data$bmi)
-# imputation - change this
-#stroke_data <- drop_na(stroke_data)
+
 # change categorical variables to factors
 stroke_data$gender <- ifelse(stroke_data$gender == "Other", "Female", stroke_data$gender)
 stroke_data$gender = as.factor(stroke_data$gender)
@@ -85,7 +83,8 @@ trainData_pp <- as.data.frame(bake(prep, new_data = trainData))
 testData_pp <- as.data.frame(bake(prep, new_data = testData))
 ```
 
-The training data now contains `r nrow(trainData_pp)` rows.
+The training data now contains `r nrow(trainData_pp)` rows. The test data 
+now contains `r nrow(testData_pp)` rows.
 
 ## Model Fitting
 ```{r}
@@ -111,14 +110,8 @@ model.glmn <- train(stroke ~ .,
                     trControl = ctrl)
 ```
 
-The tuning parameter in the penalty term of the model controls its flexibility. We decided to test a grid of tuning parameters. For alpha, since we wanted to use the elastic net method, we created a sequence from 0 to 1. For lambda, we created a sequence of numbers to test different values. The model then selects optimal values from the grid which are: alpha = `r model.glmn$bestTune$alpha` and lambda = `r model.glmn$bestTune$lambda`. To display this visually, we created a plot of the model AUC for various tuning parameters in the grid.
-
-```{r, echo=FALSE}
-myCol <- rainbow(25)
-myPar <- list(superpose.symbol = list(col = myCol),
-superpose.line = list(col = myCol))
-plot(model.glmn, par.settings = myPar, xTrans = log)
-```
+The tuning parameter in the penalty term of the model controls its flexibility. We decided to test a grid of tuning parameters. For alpha, since we wanted to use the elastic net method, we created a sequence from 0 to 1. For lambda, we created a sequence of numbers to test different values. The model then selects optimal values from the grid which are: alpha = `r model.glmn$bestTune$alpha` and lambda = `r model.glmn$bestTune$lambda`. To display this visually, we created a plot of the model AUC for various tuning parameters in the grid. This plot can be viewed in
+the appendix.
 
 4 predictors are included in the final model, as seen when the coefficients are extracted.
 ```{r, echo=FALSE}
@@ -143,22 +136,11 @@ mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
                   trControl = ctrl)
 ```
 
-Let's examine the cross-validation plot.
-```{r}
-ggplot(mars.fit) +
-  theme_bw() +
-  labs(title = "Cross-validated AUC as a function of \n Number of Terms Colored by Degree",
-       x = "Number of Terms",
-       y = "Cross-validated AUC") +
-  theme(plot.title = element_text(hjust = 0.5))
-```
+The cross-validation plot can be viewed in the appendix.
 
-Let's get the values of degree (the degree of interaction) and nprune (the number of retained terms) that maximize the cross-validated AUC.
-```{r}
-mars.fit$bestTune %>% 
-  as_tibble() %>% 
-  knitr::kable()
-```
+The value of degree that maximizes the cross-validated AUC is 
+`r mars.fit$bestTune$degree`, and the value of nprune that maximizes the
+cross-validated AUC is `r mars.fit$bestTune$nprune`.
 
 Let's examine the model that maximizes the cross-validated AUC.
 ```{r}
@@ -185,10 +167,8 @@ svml.fit <- train(stroke ~ . ,
                   trControl = ctrl)
 ```
 
-SVM's with a linear kernel contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid.
-```{r}
-plot(svml.fit, highlight = TRUE, xTrans = log)
-```
+SVM's with a linear kernel contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid. 
+This plot can be viewed in the appendix.
 
 The final SVM with a linear kernel that maximizes the cross-validated AUC needed is displayed below.
 ```{r}
@@ -207,7 +187,6 @@ plot(svm_imp)
 
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
 ```{r}
-ctrl <- trainControl(method = "cv")
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
                          sigma = exp(seq(-8,-1,len=20)))
 set.seed(1)
@@ -215,16 +194,11 @@ svmr.fit <- train(stroke ~ . ,
                   data = trainData_pp,
                   method = "svmRadialSigma",
                   tuneGrid = svmr.grid,
+                  metric = "ROC",
                   trControl = ctrl)
 ```
 
-Let's examine the cross-validation plot.
-```{r}
-myCol<- rainbow(20)
-myPar <- list(superpose.symbol = list(col = myCol),
-              superpose.line = list(col = myCol))
-plot(svmr.fit, highlight = TRUE, par.settings = myPar)
-```
+The cross-validation plot can be viewed in the appendix.
 
 Let's get the values of sigma and cost that maximize the cross-validated AUC.
 ```{r}
@@ -244,7 +218,7 @@ It needed 387 support vectors to fit the model.
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                        interaction.depth = 1:6,
+                        interaction.depth = 3:8,
                         shrinkage = c(0.0005,0.001,0.002),
                         n.minobsinnode = 1)
 
@@ -265,7 +239,7 @@ ggplot(gbmA.fit, highlight = TRUE)
 ```
 
 ```{r}
-gbmA.pred <- predict(gbmA.fit, newdata = testData_pp, type = "prob")[,1]
+gbmA.pred <- predict(gbmA.fit, newdata = trainingData_pp, type = "prob")[,1]
 ```
 
 ```{r}
@@ -273,3 +247,82 @@ roc.gbmA <- roc(testData_pp, gbmA.pred)
 plot(roc.gbmA, add = TRUE, col = 2)
 ```
 
+```{r}
+summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
+```
+
+
+## Comparing Models
+
+```{r}
+resamp <- resamples(list(gbmA = gbmA.fit,
+                         svml = svml.fit,
+                         svmr = svmr.fit,
+                         mars = mars.fit, 
+                         glmn = model.glmn))
+bwplot(resamp)
+```
+
+Extracting AUCs for each model 
+```{r}
+pred.svml <- predict(svml.fit, newdata = trainData_pp)
+pred.svmr <- predict(svmr.fit, newdata = trainData_pp)
+pred.mars <- predict(mars.fit, newdata = trainData_pp)
+
+roc.gbmA <- roc(trainData_pp, gbmA.pred)
+roc.svml <- roc(trainData_pp,pred.svml)
+roc.svmr <- roc(trainData_pp,pred.svmr)
+roc.mars <- roc(trainData_pp,pred.mars)
+
+
+plot(roc.gbmA, add = TRUE, col = 2)
+plot(roc.svml, add = TRUE, col = 2)
+plot(roc.svmr, add = TRUE, col = 2)
+plot(roc.mars, add = TRUE, col = 2)
+```
+
+Plotting comparison of ROC Curves
+
+```{r}
+auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1])
+
+modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS")
+legend("bottomright", legend = paste0(modelNames, ": ", round(auc,3)),
+col = 1:2, lwd = 2)
+```
+
+## Conclusion
+
+
+## Appendix
+
+### Penalized Logistic Regression Cross-Validation Plot
+```{r}
+myCol <- rainbow(25)
+myPar <- list(superpose.symbol = list(col = myCol),
+superpose.line = list(col = myCol))
+plot(model.glmn, par.settings = myPar, xTrans = log)
+```
+
+### MARS Cross-Validation Plot
+```{r}
+ggplot(mars.fit) +
+  theme_bw() +
+  labs(title = "Cross-validated AUC as a function of \n Number of Terms Colored by Degree",
+       x = "Number of Terms",
+       y = "Cross-validated AUC") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### SVM (Linear Kernel) Cross-Validation Plot
+```{r}
+plot(svml.fit, highlight = TRUE, xTrans = log)
+```
+
+### SVM (Radial Kernel) Cross-Validation Plot
+```{r}
+myCol<- rainbow(20)
+myPar <- list(superpose.symbol = list(col = myCol),
+              superpose.line = list(col = myCol))
+plot(svmr.fit, highlight = TRUE, par.settings = myPar)
+```
