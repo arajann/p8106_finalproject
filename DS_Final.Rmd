@@ -203,8 +203,6 @@ svm_imp <- varImp(svml.fit, scale = F)
 plot(svm_imp)
 ```
 
-Some limitations of SVM 
-
 ## SVM with Radial Kernel
 
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
