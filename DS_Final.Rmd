@@ -189,7 +189,6 @@ Some limitations of SVM
 
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
 ```{r}
-ctrl <- trainControl(method = "cv")
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
                          sigma = exp(seq(-8,-1,len=20)))
 set.seed(1)
@@ -197,6 +196,7 @@ svmr.fit <- train(stroke ~ . ,
                   data = trainData_pp,
                   method = "svmRadialSigma",
                   tuneGrid = svmr.grid,
+                  metric = "ROC",
                   trControl = ctrl)
 ```
 
