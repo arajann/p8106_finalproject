@@ -220,7 +220,7 @@ It needed 387 support vectors to fit the model.
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                        interaction.depth = 1:6,
+                        interaction.depth = 3:8,
                         shrinkage = c(0.0005,0.001,0.002),
                         n.minobsinnode = 1)
 
@@ -247,6 +247,50 @@ gbmA.pred <- predict(gbmA.fit, newdata = testData_pp, type = "prob")[,1]
 ```{r}
 roc.gbmA <- roc(testData_pp, gbmA.pred)
 plot(roc.gbmA, add = TRUE, col = 2)
+```
+
+```{r}
+summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
+```
+
+
+## Comparing Models
+
+```{r}
+resamp <- resamples(list(gbmA = gbmA.fit,
+                         svml = svml.fit,
+                         svmr = svmr.fit,
+                         mars = mars.fit, 
+                         glmn = model.glmn))
+bwplot(resamp)
+```
+
+Extracting AUCs for each model 
+```{r}
+pred.svml <- predict(svml.fit, newdata = testData_pp)
+pred.svmr <- predict(svmr.fit, newdata = testData_pp)
+pred.mars <- predict(mars.fit, newdata = testData_pp)
+
+roc.gbmA <- roc(testData_pp, gbmA.pred)
+roc.svml <- roc(testData_pp,pred.svml)
+roc.svmr <- roc(testData_pp,pred.svmr)
+roc.mars <- roc(testData_pp,pred.mars)
+
+
+plot(roc.gbmA, add = TRUE, col = 2)
+plot(roc.svml, add = TRUE, col = 2)
+plot(roc.svmr, add = TRUE, col = 2)
+plot(roc.mars, add = TRUE, col = 2)
+```
+
+Plotting comparison of ROC Curves
+
+```{r}
+auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1])
+
+modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS")
+legend("bottomright", legend = paste0(modelNames, ": ", round(auc,3)),
+col = 1:2, lwd = 2)
 ```
 
 ## Appendix
