@@ -241,7 +241,7 @@ ggplot(gbmA.fit, highlight = TRUE)
 ```
 
 ```{r}
-gbmA.pred <- predict(gbmA.fit, newdata = testData_pp, type = "prob")[,1]
+gbmA.pred <- predict(gbmA.fit, newdata = trainingData_pp, type = "prob")[,1]
 ```
 
 ```{r}
@@ -267,14 +267,14 @@ bwplot(resamp)
 
 Extracting AUCs for each model 
 ```{r}
-pred.svml <- predict(svml.fit, newdata = testData_pp)
-pred.svmr <- predict(svmr.fit, newdata = testData_pp)
-pred.mars <- predict(mars.fit, newdata = testData_pp)
+pred.svml <- predict(svml.fit, newdata = trainingData_pp)
+pred.svmr <- predict(svmr.fit, newdata = trainingData_pp)
+pred.mars <- predict(mars.fit, newdata = trainingData_pp)
 
-roc.gbmA <- roc(testData_pp, gbmA.pred)
-roc.svml <- roc(testData_pp,pred.svml)
-roc.svmr <- roc(testData_pp,pred.svmr)
-roc.mars <- roc(testData_pp,pred.mars)
+roc.gbmA <- roc(trainingData_pp, gbmA.pred)
+roc.svml <- roc(trainingData_pp,pred.svml)
+roc.svmr <- roc(trainingData_pp,pred.svmr)
+roc.mars <- roc(trainingData_pp,pred.mars)
 
 
 plot(roc.gbmA, add = TRUE, col = 2)
