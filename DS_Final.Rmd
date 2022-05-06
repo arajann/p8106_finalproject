@@ -15,11 +15,14 @@ library(ranger)
 library(gbm)
 library(pdp)
 library(pROC)
-
 ```
 
+# Introduction
+## Data/Motivation
+For our project our team chose to use the stroke prediction dataset from [kaggle](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset?datasetId=1120859&language=R). [Stroke](https://www.stroke.org/en/about-stroke#:~:text=Stroke%20is%20a%20disease%20that,or%20bursts%20(or%20ruptures)) is a disease that affects the arteries leading to and within the brain. It is the No. 5 cause of death and a leading cause of disability in the United States. Our motivation was to use this dataset to help identify key indicators that lead to strokes, since many are preventable. The questions we are trying to answer using this dataset are: 1) What are the key indicators or risk factors that lead to stroke occurence? 2) Which classification model performs best in predicting these key indicators?
+
 ## Data Cleaning
-To properly analyze the data and build models to make predictions, the first step is to clean the data. The vast majority of the data was already fairly clean and ready for analysis, but I began by reading in the data, cleaning variable names, making categorical data factors, making continuous data of type numeric, and dropping missing values. I also decided to exclude the variable "id" since it will not be relevant to my analysis. 
+To properly analyze the data and build models to make predictions, the first step is to clean the data. The vast majority of the data was already fairly clean and ready for analysis, but we began by reading in the data, cleaning variable names, making categorical data factors, making continuous data of type numeric, and dropping missing values. We also decided to exclude the variable "id" since it will not be relevant to our analysis. 
 ```{r, warning = FALSE, include=FALSE}
 # data cleaning
 stroke_data <- read_csv("./data/healthcare-dataset-stroke-data.csv")
@@ -49,7 +52,7 @@ The resulting dataset contains `r nrow(stroke_data)` patient records and `r ncol
 
 # Modeling
 
-To begin the modeling process, I split the data into training (75%) and test (25%) data. 
+To begin the modeling process, We split the data into training (75%) and test (25%) data. 
 ```{r, echo=FALSE}
 set.seed(1)
 rowTrain <- createDataPartition(y = stroke_data$stroke, p = .75, list = FALSE)
@@ -70,8 +73,7 @@ values, and there are `r nrow_missing_test` rows in the test data containing
 missing values.
 
 ## Imputation
-We apply the k nearest neighbor (k = 5) method for imputation where we assume 
-any missing data is missing at random.
+We apply the k nearest neighbor (k = 5) method for imputation where we assume any missing data is missing at random.
 ```{r}
 rec <- recipe(stroke ~., data = trainData) %>%
   step_impute_knn(all_predictors(), neighbors = 5) %>%
@@ -79,8 +81,8 @@ rec <- recipe(stroke ~., data = trainData) %>%
   step_scale(all_numeric_predictors())
 
 prep <- prep(rec, training = trainData)
-trainData_pp <- bake(prep, new_data = trainData)
-testData_pp <- bake(prep, new_data = testData)
+trainData_pp <- as.data.frame(bake(prep, new_data = trainData))
+testData_pp <- as.data.frame(bake(prep, new_data = testData))
 ```
 
 The training data now contains `r nrow(trainData_pp)` rows.
@@ -92,10 +94,10 @@ ctrl <- trainControl(method = "repeatedcv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
 ```
-
+The resampling method we used for all of the models is as follows: k-fold cross validation, two class summary (since the ROC curve is only for two classes), and classProbs = T, since AUC/ROC is the evaluation criteria. 
 
 ## Penalized Logistic Regression
-The second model I fit to the dataset was Penalized Logistic Regression. 
+The first model we fit to the dataset was Penalized Logistic Regression. 
 ```{r, echo=FALSE}
 glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21), 
                         .lambda = exp(seq(-8, 2, length = 100)))
@@ -109,7 +111,7 @@ model.glmn <- train(stroke ~ .,
                     trControl = ctrl)
 ```
 
-The tuning parameter in the penalty term of the model controls its flexibility. I decided to test a grid of tuning parameters. For alpha, since I wanted to use the elastic net method, I created a sequence from 0 to 1. For lambda, I created a sequence of numbers to test different values. The model then selects optimal values from the grid which are: alpha = `r model.glmn$bestTune$alpha` and lambda = `r model.glmn$bestTune$lambda`. To display this visually, I created a plot of the model AUC for various tuning parameters in the grid.
+The tuning parameter in the penalty term of the model controls its flexibility. We decided to test a grid of tuning parameters. For alpha, since we wanted to use the elastic net method, we created a sequence from 0 to 1. For lambda, we created a sequence of numbers to test different values. The model then selects optimal values from the grid which are: alpha = `r model.glmn$bestTune$alpha` and lambda = `r model.glmn$bestTune$lambda`. To display this visually, we created a plot of the model AUC for various tuning parameters in the grid.
 
 ```{r, echo=FALSE}
 myCol <- rainbow(25)
@@ -128,7 +130,7 @@ level. This suggests they play important roles in predicting the response.
 
 ## MARS
 
-Let's train a MARS model on the imputed training data.
+Let's train a MARS model on the imputed training data. The MARS model has two tuning parameters: degree and nprune. Degree is the degree of interaction and nprune is the number of retained terms.
 ```{r warning=FALSE, message=FALSE}
 set.seed(1)
 mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
@@ -151,8 +153,7 @@ ggplot(mars.fit) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-Let's get the values of degree (the degree of interaction) and nprune 
-(the number of retained terms) that maximize the cross-validated AUC.
+Let's get the values of degree (the degree of interaction) and nprune (the number of retained terms) that maximize the cross-validated AUC.
 ```{r}
 mars.fit$bestTune %>% 
   as_tibble() %>% 
@@ -170,10 +171,43 @@ tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) 
   knitr::kable(col.names = c("term", "estimate"))
 ```
 
+## SVM with Linear Kernel
+
+The next model we fit was a support vector machine with a linear kernel on the imputed training data.
+```{r}
+set.seed(1)
+svml.fit <- train(stroke ~ . , 
+                  data = trainData_pp,
+                  method = "svmLinear",
+                  tuneGrid = data.frame(
+                    C = exp(seq(-7,2,len = 10))),
+                  metric = "ROC",
+                  trControl = ctrl)
+```
+
+SVM's with a linear kernel contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid.
+```{r}
+plot(svml.fit, highlight = TRUE, xTrans = log)
+```
+
+The final SVM with a linear kernel that maximizes the cross-validated AUC needed is displayed below.
+```{r}
+svml.fit$finalModel
+```
+
+It needed 421 support vectors to fit the line.
+
+As a reference to understand the model better, let's take a look at a variable importance plot
+```{r}
+svm_imp <- varImp(svml.fit, scale = F)
+plot(svm_imp)
+```
+
+Some limitations of SVM 
+
 ## SVM with Radial Kernel
 
-Let's train a support vector machine with a radial kernel on the imputed 
-training data.
+Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
 ```{r}
 ctrl <- trainControl(method = "cv")
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
@@ -194,56 +228,21 @@ myPar <- list(superpose.symbol = list(col = myCol),
 plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 ```
 
-Let's get the values of sigma and cost that maximize the cross-validated
-accuracy.
+Let's get the values of sigma and cost that maximize the cross-validated AUC.
 ```{r}
 svmr.fit$bestTune %>% 
   as_tibble() %>% 
   knitr::kable(col.names = c("Sigma", "Cost"))
 ```
 
-Let's get the support vector machine with radial kernel that maximizes the 
-cross-validated accuracy.
+Let's get the support vector machine with radial kernel that maximizes the cross-validated AUC.
 ```{r}
 svmr.fit$finalModel
 ```
 
-## SVM with Linear Kernel
-
-For the next model, we fit was a support vector machine with a linear kernel on the imputed training data.
-```{r}
-set.seed(1)
-svml.fit <- train(stroke ~ . , 
-                  data = trainData_pp,
-                  method = "svmLinear",
-                  tuneGrid = data.frame(
-                    C = exp(seq(-7,2,len = 10))),
-                  metric = "ROC",
-                  trControl = ctrl)
-```
-
-SVM's with a linear kernel contain a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid.
-```{r}
-plot(svml.fit, highlight = TRUE, xTrans = log)
-```
-
-The final SVM with a linear kernel that maximizes the cross-validated accuracy needed is displayed below.
-```{r}
-svml.fit$finalModel
-```
-
-It needed 421 support vectors to fit the line.
-
-As a reference to understand the model better, let's take a look at a variable importance plot
-```{r}
-svm_imp <- varImp(svml.fit, scale = F)
-plot(svm_imp)
-```
-
+It needed 387 support vectors to fit the model.
 
 ## Boosting
-
-
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
@@ -253,11 +252,10 @@ gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
 
 set.seed(1)
 
-dat <- trainData_pp[1:11]
+#dat <- trainData_pp[1:11]
 
 gbmA.fit <- train(stroke ~ . ,
-                  stroke_data,
-                  subset = dat,
+                  trainData_pp,
                   tuneGrid = gbmA.grid,
                   trControl = ctrl,
                   method = "gbm",
@@ -265,17 +263,15 @@ gbmA.fit <- train(stroke ~ . ,
                   metric = "ROC",
                   verbose = FALSE)
 
-
 ggplot(gbmA.fit, highlight = TRUE)
 ```
+
 ```{r}
 gbmA.pred <- predict(gbmA.fit, newdata = testData_pp, type = "prob")[,1]
-
 ```
 
 ```{r}
 roc.gbmA <- roc(testData_pp, gbmA.pred)
 plot(roc.gbmA, add = TRUE, col = 2)
-
 ```
 
