@@ -188,7 +188,7 @@ Some limitations of SVM
 ## SVM with Radial Kernel
 
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
-```{r}
+```{r include=FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
                          sigma = exp(seq(-8,-1,len=20)))
 set.seed(1)
@@ -241,17 +241,23 @@ ggplot(gbmA.fit, highlight = TRUE)
 ```
 
 ```{r}
-gbmA.pred <- predict(gbmA.fit, newdata = trainingData_pp, type = "prob")[,1]
+gbmA.pred <- predict(gbmA.fit, newdata = trainData_pp, type = "prob")[,2]
+
+
 ```
 
 ```{r}
-roc.gbmA <- roc(testData_pp, gbmA.pred)
-plot(roc.gbmA, add = TRUE, col = 2)
+roc.gbmA <- roc(trainData_pp, gbmA.pred)
+plot(roc.gbmA, legacy.axes = TRUE)
 ```
+
+We will now fit a variable importance plot. 
 
 ```{r}
 summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
 ```
+
+With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
 
 
 ## Comparing Models
@@ -263,34 +269,37 @@ resamp <- resamples(list(gbmA = gbmA.fit,
                          mars = mars.fit, 
                          glmn = model.glmn))
 bwplot(resamp)
+summary(resamp)
 ```
 
 Extracting AUCs for each model 
 ```{r}
-pred.svml <- predict(svml.fit, newdata = trainData_pp)
-pred.svmr <- predict(svmr.fit, newdata = trainData_pp)
-pred.mars <- predict(mars.fit, newdata = trainData_pp)
+pred.svml <- predict(svml.fit, newdata = trainData_pp, type="prob")
+pred.svmr <- predict(svmr.fit, newdata = trainData_pp, type="prob")
+pred.mars <- predict(mars.fit, newdata = trainData_pp, type = "prob")[,1]
+pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
 
-roc.gbmA <- roc(trainData_pp, gbmA.pred)
-roc.svml <- roc(trainData_pp,pred.svml)
-roc.svmr <- roc(trainData_pp,pred.svmr)
-roc.mars <- roc(trainData_pp,pred.mars)
+roc.gbmA <- roc(trainData_pp$stroke, gbmA.pred)
+roc.svml <- roc(trainData_pp$stroke,pred.svml[,2])
+roc.svmr <- roc(trainData_pp$stroke,pred.svmr[,2])
+roc.mars <- roc(trainData_pp$stroke,pred.mars)
+roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
+
+modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS","Penalized Logistic Regression")
+
+ggroc(list(roc.gbmA,roc.svml,roc.svmr,roc.mars,roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelNames,"(",round(auc,3),")"), name="Models(AUC)") +
+  geom_abline(intercept=0,slope=1,color="grey")
 
 
-plot(roc.gbmA, add = TRUE, col = 2)
-plot(roc.svml, add = TRUE, col = 2)
-plot(roc.svmr, add = TRUE, col = 2)
-plot(roc.mars, add = TRUE, col = 2)
+auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
+
+
 ```
 
 Plotting comparison of ROC Curves
 
 ```{r}
-auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1])
 
-modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS")
-legend("bottomright", legend = paste0(modelNames, ": ", round(auc,3)),
-col = 1:2, lwd = 2)
 ```
 
 ## Conclusion
@@ -328,3 +337,5 @@ myPar <- list(superpose.symbol = list(col = myCol),
               superpose.line = list(col = myCol))
 plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 ```
+
+
