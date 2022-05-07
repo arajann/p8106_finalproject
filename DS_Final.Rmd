@@ -304,20 +304,10 @@ confusionMatrix(data=test.pred,
                 reference = testData_pp$stroke,
                 positive = "Yes")
 ```
-From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. From the confusion matrix, we see that our model is not able to actually
-detect stroke cases at a 50% threshold. We should consult with experts on 
-stroke to determine what threshold to use.
+From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. From the confusion matrix, we see that our model is not able to actually detect stroke cases at a 50% threshold. We should consult with experts on stroke to determine what threshold to use.
 
 ## Conclusion
-The main takeaways from this report are that age, hypertension, heart disease 
-and average glucose level each have a positive relationship with stroke. In
-considering the cross-validated model performance of penalized logistic
-regression, MARS, support vector machine with linear kernel, support vector
-machine with radial kernel, and random forest, penalized logistic regression
-has the highest cross-validated model performance. Additionally, for this
-model, the threshold needs to be adjusted, in consultation with experts on
-stroke, to detect stroke cases as the prevalence of stroke in this dataset
-is low.
+The main takeaways from this report are that age, hypertension, heart disease and average glucose level each have a positive relationship with stroke. In considering the cross-validated model performance of penalized logistic regression, MARS, support vector machine with a linear kernel, support vector machine with a radial kernel, and random forest, penalized logistic regression has the highest cross-validated model performance. Additionally, for this model, the threshold needs to be adjusted, in consultation with experts on stroke, to detect stroke cases as the prevalence of stroke in this dataset is low. Individuals cannot control aging, but they can focus on diminishing other risk factors such as hypertension, heart disease and average glucose level, with methods such as a healthy diet, frequent exercise, and stress reduction. These results were also largely expected due to significant scientific research conducted on risk factors for strokes. 
 
 ## Appendix
 
