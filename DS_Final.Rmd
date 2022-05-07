@@ -1,5 +1,7 @@
 ---
 title: "Applying Machine Learning Methods to Predict Stroke"
+author: "Malvika Venkataraman (msv2137), Anand Rajan (ar4173), Benjamin Goebel (bpg2118)"
+date: "May 8, 2022"
 output: pdf_document
 ---
 
@@ -193,22 +195,13 @@ The cross-validation plot can be viewed in the appendix.
 
 The value of degree that maximizes the cross-validated AUC is `r mars.fit$bestTune$degree`, and the value of nprune that maximizes the cross-validated AUC is `r mars.fit$bestTune$nprune`.
 
-Let's examine the model that maximizes the cross-validated AUC.
-```{r}
-final_model_mars <- coef(mars.fit$finalModel)
-terms_mars <- final_model_mars %>%
-  data.frame() %>%
-  labels() %>%
-  unlist()
-tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) %>%
-  knitr::kable(col.names = c("term", "estimate"))
-```
+The model that maximizes the cross-validated AUC can be viewed in the appendix.
 
 A limitation of MARS models is that they can suffer from high variance. 
 
 ## SVM with Linear Kernel
 The next model we fit to the imputed training data was a Support Vector Machine with a Linear Kernel. An assumption of the model is that the linearly separable. This is also a limitation of the model, as they don't perform well when this isn’t the case.
-```{r}
+```{r include =FALSE}
 set.seed(1)
 svml.fit <- train(stroke ~ . , 
                   data = trainData_pp,
@@ -235,18 +228,12 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
-<<<<<<< HEAD
 
-Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
-```{r include=FALSE}
-svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
-                         sigma = exp(seq(-8,-1,len=20)))
-=======
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
-```{r}
+
+```{r include = FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
->>>>>>> e881afeaaf3dfae52839f622896e34ab3430e3c7
 set.seed(1)
 svmr.fit <- train(stroke ~ . , 
                   data = trainData_pp,
@@ -275,15 +262,15 @@ A limitation of SVMs is the black box nature of these functions. The use of kern
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                        interaction.depth = 3:8,
+                        interaction.depth = 5:11,
                         shrinkage = c(0.0005,0.001,0.002),
                         n.minobsinnode = 1)
 
 set.seed(1)
 
 #dat <- trainData_pp[1:11]
-install.packages("xgboost")
-library(xgboost)
+#install.packages("xgboost")
+#library(xgboost)
 
 gbmA.fit <- train(stroke ~ . ,
                   trainData_pp,
@@ -314,52 +301,62 @@ We will now fit a variable importance plot.
 summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
 ```
 
-<<<<<<< HEAD
 With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
 
+## Random Forest
+```{r}
+rf.grid <- expand.grid(mtry = 1:10,
+                       splitrule = "gini",
+                       min.node.size = 1:6)
 
-=======
->>>>>>> e881afeaaf3dfae52839f622896e34ab3430e3c7
+set.seed(1)
+rf.fit <- train(stroke ~ . ,
+                trainData_pp,
+                method = "ranger",
+                tuneGrid = rf.grid,
+                metric = "ROC",
+                trControl = ctrl)
+
+```
+The cross-validation plot can be viewed in the appendix.
+
 ## Comparing Models
 
 To decide which model we will use to predict the response variable, let's use the AUC to compare model performance.
 ```{r}
-resamp <- resamples(list(gbmA = gbmA.fit,
+resamp <- resamples(list(glmn = model.glmn,
+                         mars = mars.fit,
                          svml = svml.fit,
                          svmr = svmr.fit,
-                         mars = mars.fit, 
-                         glmn = model.glmn))
-bwplot(resamp)
-summary(resamp)
-```
+                         rf = rf.fit))
 
-Extracting AUCs for each model 
+tibble(model = c("Penalized Logistic Regression", "MARS", 
+                 "SVM (Linear Kernel)", "SVM (Radial Kernel)",
+                 "Random Forest"),
+       AUC = c(round(mean(unlist(select(resamp$values, "glmn~ROC"))), 3),
+               round(mean(unlist(select(resamp$values, "mars~ROC"))), 3),
+               round(mean(unlist(select(resamp$values, "svml~ROC"))), 3),
+               round(mean(unlist(select(resamp$values, "svmr~ROC"))), 3),
+               round(mean(unlist(select(resamp$values, "rf~ROC"))), 3))) %>%
+  arrange(desc(AUC)) %>%
+  knitr::kable()
+```
+The penalized logistic regression model has the highest cross-validated AUC
+and will be used as the final model.
+
+Let's get its AUC on the imputed test dataset and plot the ROC curve.
 ```{r}
-pred.svml <- predict(svml.fit, newdata = trainData_pp, type="prob")
-pred.svmr <- predict(svmr.fit, newdata = trainData_pp, type="prob")
-pred.mars <- predict(mars.fit, newdata = trainData_pp, type = "prob")[,1]
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
-
-roc.gbmA <- roc(trainData_pp$stroke, gbmA.pred)
-roc.svml <- roc(trainData_pp$stroke,pred.svml[,2])
-roc.svmr <- roc(trainData_pp$stroke,pred.svmr[,2])
-roc.mars <- roc(trainData_pp$stroke,pred.mars)
 roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
+auc <- c(roc.glmn$auc[1])
 
-modelNames <- c("Adaboost","Linear Kernel","Radial Kernel", "MARS","Penalized Logistic Regression")
+modelName <- c("Penalized Logistic Regression")
 
-ggroc(list(roc.gbmA,roc.svml,roc.svmr,roc.mars,roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelNames,"(",round(auc,3),")"), name="Models(AUC)") +
-  geom_abline(intercept=0,slope=1,color="grey")
-
-
-auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
-
-
-```
-
-Plotting comparison of ROC Curves
-
-```{r}
+ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelNames,"(",round(auc,3),")"), name="Model (AUC)") +
+  geom_abline(intercept=0,slope=1,color="grey") +
+  theme_bw() +
+  labs(title = "AUC curve on Imputed Test Data") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ```
 
@@ -386,6 +383,17 @@ ggplot(mars.fit) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+### MARS Final Model
+```{r}
+final_model_mars <- coef(mars.fit$finalModel)
+terms_mars <- final_model_mars %>%
+  data.frame() %>%
+  labels() %>%
+  unlist()
+tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) %>%
+  knitr::kable(col.names = c("term", "estimate"))
+```
+
 ### SVM (Linear Kernel) Cross-Validation Plot
 ```{r}
 plot(svml.fit, highlight = TRUE, xTrans = log)
@@ -398,8 +406,9 @@ myPar <- list(superpose.symbol = list(col = myCol),
               superpose.line = list(col = myCol))
 plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 ```
-<<<<<<< HEAD
 
+### Random Forest Cross-Validation Plot
+```{r}
+ggplot(rf.fit, highlight = TRUE)
+```
 
-=======
->>>>>>> e881afeaaf3dfae52839f622896e34ab3430e3c7
