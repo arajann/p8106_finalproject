@@ -216,12 +216,6 @@ The model contains a tuning parameter C, also known as Cost, that determines the
 
 The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix
 
-As a reference to understand the model better, let's take a look at a variable importance plot
-```{r}
-svm_imp <- varImp(svml.fit, scale = F)
-plot(svm_imp)
-```
-
 ## SVM with Radial Kernel
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. 
 ```{r include = FALSE}
