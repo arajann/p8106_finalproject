@@ -108,7 +108,7 @@ work_type_plot + smoking_status_plot + gender_plot + plot_layout(ncol = 2)
 From the visualizations, we can see that among those who experienced strokes: a noticeably higher proportion of individuals had hypertension, heart disease, have ever been married, have formerly smoked or smoke currently. These variables could be potential indicators of stroke occurrence in the models.
 
 # Modeling
-To begin the modeling process, we split the data into training (75%) and test (25%) data. Since all the remaining predictors in the dataset are potential risk factors for strokes, I decided to include them in all of the following models.
+To begin the modeling process, we split the data into training (75%) and test (25%) data. Since all the remaining predictors in the dataset are potential risk factors for strokes, we decided to include them in all of the following models.
 ```{r, include=FALSE}
 set.seed(1)
 rowTrain <- createDataPartition(y = stroke_data$stroke, p = .75, list = FALSE)
