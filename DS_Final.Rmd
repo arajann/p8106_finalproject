@@ -190,12 +190,8 @@ mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
 
 The cross-validation plot can be viewed in the appendix.
 
-<<<<<<< HEAD
+
 The value of degree that maximizes the cross-validated AUC is `r mars.fit$bestTune$degree`, and the value of nprune that maximizes the cross-validated AUC is `r mars.fit$bestTune$nprune`.
-=======
-The values of degree and nprune that maximize the cross-validated AUC are 
-`r mars.fit$bestTune$degree` and `r mars.fit$bestTune$nprune`.
->>>>>>> 1fa7a20b6a16496a9e178d3a518bf821fb10b870
 
 Let's examine the model that maximizes the cross-validated AUC.
 ```{r}
