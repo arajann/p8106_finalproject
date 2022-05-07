@@ -200,7 +200,7 @@ The model that maximizes the cross-validated AUC can be viewed in the appendix.
 A limitation of MARS models is that they can suffer from high variance. 
 
 ## SVM with Linear Kernel
-The next model we fit to the imputed training data was a Support Vector Machine with a Linear Kernel. An assumption of the model is that the linearly separable. This is also a limitation of the model, as they don't perform well when this isn’t the case.
+The next model we fit to the imputed training data was a Support Vector Machine with a Linear Kernel. An assumption of the model is that the data is linearly separable. This is also a limitation of the model, as they don't perform well when this isn’t the case.
 ```{r include =FALSE}
 set.seed(1)
 svml.fit <- train(stroke ~ . , 
@@ -214,7 +214,7 @@ svml.fit <- train(stroke ~ . ,
 
 The model contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid. This plot can be viewed in the appendix.
 
-The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix
+The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix.
 
 As a reference to understand the model better, let's take a look at a variable importance plot
 ```{r}
@@ -239,7 +239,7 @@ svmr.fit <- train(stroke ~ . ,
 
 The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters. The values of C and sigma that maximize the cross-validated AUC are `r round(svmr.fit$bestTune$C, 3)` and `r round(svmr.fit$bestTune$sigma, 5)`.The cross-validation plot can be viewed in the appendix.
 
-The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix
+The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix.
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
 
