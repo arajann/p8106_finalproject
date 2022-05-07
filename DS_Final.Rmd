@@ -235,18 +235,17 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
-<<<<<<< HEAD
+
 
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
-```{r include=FALSE}
-svmr.grid <- expand.grid(C = exp(seq(-2,3,len=10)),
-                         sigma = exp(seq(-8,-1,len=20)))
-=======
+  
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
+
+
 ```{r}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
->>>>>>> e881afeaaf3dfae52839f622896e34ab3430e3c7
+
 set.seed(1)
 svmr.fit <- train(stroke ~ . , 
                   data = trainData_pp,
@@ -275,16 +274,11 @@ A limitation of SVMs is the black box nature of these functions. The use of kern
 
 ```{r}
 gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                        interaction.depth = 3:8,
+                        interaction.depth = 7:10,
                         shrinkage = c(0.0005,0.001,0.002),
                         n.minobsinnode = 1)
 
 set.seed(1)
-
-#dat <- trainData_pp[1:11]
-install.packages("xgboost")
-library(xgboost)
-
 gbmA.fit <- train(stroke ~ . ,
                   trainData_pp,
                   tuneGrid = gbmA.grid,
@@ -299,8 +293,6 @@ ggplot(gbmA.fit, highlight = TRUE)
 
 ```{r}
 gbmA.pred <- predict(gbmA.fit, newdata = trainData_pp, type = "prob")[,2]
-
-
 ```
 
 ```{r}
@@ -314,12 +306,21 @@ We will now fit a variable importance plot.
 summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
 ```
 
-<<<<<<< HEAD
+
+```{r}
+pdp.gbm <- gbmA.fit %>%
+            partial(pred.var = "stroke",
+            grid.resolution = 100,
+            prob = TRUE) %>%
+            autoplot(rug = TRUE, train = trainData_pp) +
+            ggtile("Boosting")
+
+```
+
+
 With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
 
 
-=======
->>>>>>> e881afeaaf3dfae52839f622896e34ab3430e3c7
 ## Comparing Models
 
 To decide which model we will use to predict the response variable, let's use the AUC to compare model performance.
@@ -332,6 +333,9 @@ resamp <- resamples(list(gbmA = gbmA.fit,
 bwplot(resamp)
 summary(resamp)
 ```
+
+From the summary table we see that the model with the highest median and mean ROC is the adaptive boosting model. 
+
 
 Extracting AUCs for each model 
 ```{r}
@@ -353,7 +357,6 @@ ggroc(list(roc.gbmA,roc.svml,roc.svmr,roc.mars,roc.glmn),legacy.axes = TRUE) + s
 
 
 auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
-
 
 ```
 
