@@ -228,26 +228,15 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
-<<<<<<< HEAD
-
-
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
   
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
 
 
-```{r}
-svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
-                         sigma = exp(seq(-8,-1,len = 20)))
-
-=======
-
-We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
-
 ```{r include = FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
->>>>>>> 892fe69a3e49df79a035dc6d79353e49a22a3d16
+
 set.seed(1)
 svmr.fit <- train(stroke ~ . , 
                   data = trainData_pp,
@@ -383,6 +372,22 @@ modelName <- c("Penalized Logistic Regression")
 auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
 
 ```
+
+We will now make a Confusion Matrix
+```{r}
+test.pred.prob <- predict(model.glmn, newdata=testData_pp[,1:10],
+                          type= "prob")[,2]
+test.pred <-  rep("No",length(test.pred.prob))
+test.pred[test.pred.prob>0.5] <- "Yes"
+test.pred <- factor(test.pred,c("No","Yes"))
+
+confusionMatrix(data=test.pred,
+                reference = testData_pp$stroke,
+                positive = "Yes")
+
+
+```
+From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. 
 
 Plotting comparison of ROC Curves
 
