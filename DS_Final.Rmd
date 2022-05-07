@@ -16,6 +16,10 @@ library(ranger)
 library(gbm)
 library(pdp)
 library(pROC)
+library(here)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(glmnet)
 ```
 
 # Introduction
@@ -48,7 +52,7 @@ stroke_data = stroke_data[,2:12]
 stroke_data = as.data.frame(stroke_data)
 ```
 
-The resulting dataset contains `r nrow(stroke_data)` patient records and `r ncol(stroke_data)` columns. The dependent variable is the binary variable "stroke" with response values "Yes" and "No". Other variables include: gender, age, hypertension, heart disease, ever been married, work type, residence type, average glucose level, BMI and smoking status.
+The resulting dataset contains `r nrow(stroke_data)` patient records and `r ncol(stroke_data)` columns. The dependent variable is the binary variable "stroke" with response values "Yes" and "No". Other variables include: gender, age, hypertension, heart disease, ever been married, work type, residence type, average glucose level, BMI and smoking status. A detailed list of all the variables in the dataset and their corresponding levels are available in the appendix.
 
 # EDA
 To create a graphical summary of the numeric data, we used featurePlot. Note that to produce the density plots for this dataset we need to exclude the categorical variables, so they were removed.
@@ -309,6 +313,49 @@ From the confusion matrix we have a 95.14% accuracy, and thus a testing error ra
 The main takeaways from this report are that age, hypertension, heart disease and average glucose level each have a positive relationship with stroke. In considering the cross-validated model performance of penalized logistic regression, MARS, support vector machine with a linear kernel, support vector machine with a radial kernel, and random forest, penalized logistic regression has the highest cross-validated model performance. Additionally, for this model, the threshold needs to be adjusted, in consultation with experts on stroke, to detect stroke cases as the prevalence of stroke in this dataset is low. Individuals cannot control aging, but they can focus on diminishing other risk factors such as hypertension, heart disease and average glucose level, with methods such as a healthy diet, frequent exercise, and stress reduction. These results were also largely expected due to significant scientific research conducted on risk factors for strokes. 
 
 ## Appendix
+
+### Variables and Levels of Variables in Dataset
+1. Gender (factor)
+
+* Female
+* Male
+2. Age (numeric)
+3. Hypertension (factor)
+
+* Yes
+* No
+4. Heart disease (factor)
+
+* Yes
+* No
+5. Ever been married (factor)
+
+* Yes
+* No
+6. Work type (factor)
+
+* Private
+* Self-employed
+* Children
+* Government job
+* Never worked
+7. Residence type (factor)
+
+* Yes
+* No
+8. Average glucose level (numeric)
+9. BMI (numeric)
+10. Smoking status (factor)
+
+* Formerly smoked
+* Smokes
+* Never smoked 
+* Unknown
+* Other
+11. Stroke (factor)
+
+* Yes
+* No
 
 ### Penalized Logistic Regression Cross-Validation Plot
 ```{r, echo=FALSE}
