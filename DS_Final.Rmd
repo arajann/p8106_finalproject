@@ -223,15 +223,15 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
-<<<<<<< HEAD
+
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
   
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
 
 
-=======
+
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. 
->>>>>>> b50f9df776bb01d06210bc99d73030bb9a271b44
+
 ```{r include = FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
@@ -251,7 +251,6 @@ The final SVM with a radial kernel that maximizes the cross-validated AUC needed
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
 
-<<<<<<< HEAD
 ## Boosting
 
 ```{r}
@@ -305,8 +304,7 @@ pdp.gbm <- gbmA.fit %>%
 
 With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
 
-=======
->>>>>>> b50f9df776bb01d06210bc99d73030bb9a271b44
+
 ## Random Forest
 For our final model, we trained a Random Forest model on the imputed training data.
 ```{r, include=FALSE}
