@@ -279,9 +279,11 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
   arrange(desc(AUC)) %>%
   knitr::kable()
 ```
+
 The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
 Let's get its AUC on the imputed test dataset and plot the ROC curve.
+
 ```{r message=FALSE, echo=FALSE}
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
 roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
@@ -296,6 +298,7 @@ ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(mo
 ```
 
 We will now make a Confusion Matrix
+
 ```{r, echo=FALSE}
 test.pred.prob <- predict(model.glmn, newdata=testData_pp[,1:10],
                           type= "prob")[,2]
@@ -307,6 +310,7 @@ confusionMatrix(data=test.pred,
                 reference = testData_pp$stroke,
                 positive = "Yes")
 ```
+
 From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. We see that our model is not able to actually detect stroke cases at a 50% threshold. We should consult with experts on stroke to determine what threshold to use.
 
 ## Conclusion
