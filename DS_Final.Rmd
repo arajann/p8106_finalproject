@@ -223,15 +223,7 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
-
-Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
-  
-We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
-
-
-
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. 
-
 ```{r include = FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
@@ -250,60 +242,6 @@ The model has two tuning parameters: C and sigma. C quantifies the cost of miscl
 The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
-
-## Boosting
-
-```{r}
-gbmA.grid <- expand.grid(n.trees = c(2000,3000,4000,5000),
-                        interaction.depth = 7:10,
-                        interaction.depth = 5:11,
-                        shrinkage = c(0.0005,0.001,0.002),
-                        n.minobsinnode = 1)
-
-set.seed(1)
-
-gbmA.fit <- train(stroke ~ . ,
-                  trainData_pp,
-                  tuneGrid = gbmA.grid,
-                  trControl = ctrl,
-                  method = "gbm",
-                  distribution = "adaboost",
-                  metric = "ROC",
-                  verbose = FALSE)
-
-ggplot(gbmA.fit, highlight = TRUE)
-```
-
-```{r}
-gbmA.pred <- predict(gbmA.fit, newdata = trainData_pp, type = "prob")[,2]
-```
-
-```{r}
-roc.gbmA <- roc(trainData_pp, gbmA.pred)
-plot(roc.gbmA, legacy.axes = TRUE)
-```
-
-We will now fit a variable importance plot. 
-
-```{r}
-summary(gbmA.fit$finalModel, las = 2, cBars = 19, cex.names = 0.6)
-```
-
-
-
-```{r}
-pdp.gbm <- gbmA.fit %>%
-            partial(pred.var = "stroke",
-            grid.resolution = 100,
-            prob = TRUE) %>%
-            autoplot(rug = TRUE, train = trainData_pp) +
-            ggtile("Boosting")
-
-```
-
-
-With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
-
 
 ## Random Forest
 For our final model, we trained a Random Forest model on the imputed training data.
@@ -346,13 +284,7 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
 ```
 The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
-
-From the summary table we see that the model with the highest median and mean ROC is the adaptive boosting model. 
-
-
-Extracting AUCs for each model 
 Let's get its AUC on the imputed test dataset and plot the ROC curve.
-
 ```{r}
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
 roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
@@ -361,7 +293,6 @@ auc <- c(roc.glmn$auc[1])
 modelName <- c("Penalized Logistic Regression")
 
 auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
-
 ```
 
 We will now make a Confusion Matrix
@@ -375,8 +306,6 @@ test.pred <- factor(test.pred,c("No","Yes"))
 confusionMatrix(data=test.pred,
                 reference = testData_pp$stroke,
                 positive = "Yes")
-
-
 ```
 From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. 
 
