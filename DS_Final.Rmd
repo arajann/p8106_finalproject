@@ -5,7 +5,7 @@ date: "May 8, 2022"
 output: pdf_document
 ---
 
-```{r}
+```{r, include=FALSE}
 library(tidyverse)
 library(caret)
 library(recipes)
@@ -260,11 +260,11 @@ rf.fit <- train(stroke ~ . ,
 ```
 The tuning parameters for the model are mtry, splitrule, and min.node.size. For the splitrule we specified "gini" which corresponds to the gini index, since this is a classification problem. We then decided to test a grid of tuning parameters for mtry and min.node.size. mtry is the number of randomly selected predictors at each cut in the tree. We created a grid from 1 to 10, where 10 is the number of predictors in the dataset.  min.node.size controls the size of the tree, so we created a sequence of numbers to test different values. The parameter is the minimum number of observations in a terminal node.  The model then selects optimal values from the grid which are: mtry = `r rf.fit$bestTune$mtry` and min.node.size = `r rf.fit$bestTune$min.node.size`. The cross-validation plot can be viewed in the appendix.
 
-A limitation of random forests are that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
+A limitation of random forests is that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
 
 ## Comparing Models
 To decide which model we will use to predict the response variable, let's use the AUC to compare model performance.
-```{r}
+```{r, echo=FALSE}
 resamp <- resamples(list(glmn = model.glmn,
                          mars = mars.fit,
                          svml = svml.fit,
@@ -285,7 +285,7 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
 The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
 Let's get its AUC on the imputed test dataset and plot the ROC curve.
-```{r}
+```{r message=FALSE, echo=FALSE}
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
 roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
 auc <- c(roc.glmn$auc[1])
@@ -299,7 +299,7 @@ ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(mo
 ```
 
 We will now make a Confusion Matrix
-```{r}
+```{r, echo=FALSE}
 test.pred.prob <- predict(model.glmn, newdata=testData_pp[,1:10],
                           type= "prob")[,2]
 test.pred <-  rep("No",length(test.pred.prob))
@@ -328,7 +328,7 @@ is low.
 ## Appendix
 
 ### Penalized Logistic Regression Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 myCol <- rainbow(25)
 myPar <- list(superpose.symbol = list(col = myCol),
 superpose.line = list(col = myCol))
@@ -336,7 +336,7 @@ plot(model.glmn, par.settings = myPar, xTrans = log)
 ```
 
 ### MARS Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 ggplot(mars.fit) +
   theme_bw() +
   labs(title = "Cross-validated AUC as a function of \n Number of Terms Colored by Degree",
@@ -346,7 +346,7 @@ ggplot(mars.fit) +
 ```
 
 ### MARS Final Model
-```{r}
+```{r, echo=FALSE}
 final_model_mars <- coef(mars.fit$finalModel)
 terms_mars <- final_model_mars %>%
   data.frame() %>%
@@ -357,17 +357,17 @@ tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) 
 ```
 
 ### SVM (Linear Kernel) Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 plot(svml.fit, highlight = TRUE, xTrans = log)
 ```
 
 ### SVM (Linear Kernel) Final Model
-```{r}
+```{r, echo=FALSE}
 svml.fit$finalModel
 ```
 
 ### SVM (Radial Kernel) Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 myCol <- rainbow(20)
 myPar <- list(superpose.symbol = list(col = myCol),
               superpose.line = list(col = myCol))
@@ -375,12 +375,12 @@ plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 ```
 
 ### SVM (Radial Kernel) Final Model
-```{r}
+```{r, echo=FALSE}
 svmr.fit$finalModel
 ```
 
 ### Random Forest Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 ggplot(rf.fit, highlight = TRUE)
 ```
 
