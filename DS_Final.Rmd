@@ -315,7 +315,15 @@ detect stroke cases at a 50% threshold. We should consult with experts on
 stroke to determine what threshold to use.
 
 ## Conclusion
-
+The main takeaways from this report are that age, hypertension, heart disease 
+and average glucose level each have a positive relationship with stroke. In
+considering the cross-validated model performance of penalized logistic
+regression, MARS, support vector machine with linear kernel, support vector
+machine with radial kernel, and random forest, penalized logistic regression
+has the highest cross-validated model performance. Additionally, for this
+model, the threshold needs to be adjusted, in consultation with experts on
+stroke, to detect stroke cases as the prevalence of stroke in this dataset
+is low.
 
 ## Appendix
 
