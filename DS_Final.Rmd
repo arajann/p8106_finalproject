@@ -108,9 +108,8 @@ work_type_plot + smoking_status_plot + gender_plot + plot_layout(ncol = 2)
 From the visualizations, we can see that among those who experienced strokes: a noticeably higher proportion of individuals had hypertension, heart disease, have ever been married, have formerly smoked or smoke currently. These variables could be potential indicators of stroke occurrence in the models.
 
 # Modeling
-
-To begin the modeling process, we split the data into training (75%) and test (25%) data. 
-```{r, echo=FALSE}
+To begin the modeling process, we split the data into training (75%) and test (25%) data. Since all the remaining predictors in the dataset are potential risk factors for strokes, I decided to include them in all of the following models.
+```{r, include=FALSE}
 set.seed(1)
 rowTrain <- createDataPartition(y = stroke_data$stroke, p = .75, list = FALSE)
 
@@ -118,9 +117,8 @@ trainData <- stroke_data[rowTrain, ]
 testData <- stroke_data[-rowTrain, ]
 ```
 
-We can examine how many rows contain missing data in the training and test
-datasets.
-```{r}
+We can examine how many rows contain missing data in the training and test datasets.
+```{r, include=FALSE}
 nrow_missing_train <- nrow(trainData %>% filter_all(any_vars(is.na(.))))
 nrow_missing_test <- nrow(testData %>% filter_all(any_vars(is.na(.))))
 ```
@@ -129,7 +127,7 @@ There are `r nrow_missing_train` rows in the training data containing missing va
 
 ## Imputation
 We apply the k nearest neighbor (k = 5) method for imputation where we assume any missing data is missing at random.
-```{r}
+```{r, include=FALSE}
 rec <- recipe(stroke ~., data = trainData) %>%
   step_impute_knn(all_predictors(), neighbors = 5) %>%
   step_center(all_numeric_predictors()) %>%
@@ -144,7 +142,7 @@ The training data now contains `r nrow(trainData_pp)` rows. The test data
 now contains `r nrow(testData_pp)` rows.
 
 ## Model Fitting
-```{r}
+```{r, include=FALSE}
 ctrl <- trainControl(method = "repeatedcv", 
                      repeats = 5,
                      summaryFunction = twoClassSummary,
@@ -154,7 +152,7 @@ The resampling method we used for all of the models is as follows: k-fold cross 
 
 ## Penalized Logistic Regression
 The first model we fit to the dataset was Penalized Logistic Regression. Some assumptions of logistic regression include requiring the observations to be independent of each other, little or no multicollinearity among independent variables, and linearity of independent variables and log odds. These assumptions are also limitations of the model.
-```{r, echo=FALSE}
+```{r, include=FALSE}
 glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21), 
                         .lambda = exp(seq(-8, 2, length = 100)))
 
@@ -171,14 +169,19 @@ The tuning parameter in the penalty term of the model controls its flexibility. 
 
 4 predictors are included in the final model, as seen when the coefficients are extracted.
 ```{r, echo=FALSE}
-coef(model.glmn$finalModel, model.glmn$bestTune$lambda)
+coef <- coef(model.glmn$finalModel, model.glmn$bestTune$lambda)
+
+matrix = as.matrix(coef)
+df = as.data.frame(matrix)
+
+knitr::kable(df[c(1,3:5,12), 1, drop = FALSE])
 ```
 
 These include age, having hypertension, having heart disease and average glucose level. This suggests they play important roles in predicting the response.
 
 ## MARS
-Next, we trained a MARS model on the imputed training data. The MARS model has two tuning parameters: degree and nprune. Degree is the degree of interaction and nprune is the number of retained terms. We decided to test a grid of tuning parameters. 
-```{r warning=FALSE, message=FALSE}
+Next, we trained a MARS model on the imputed training data.  
+```{r warning=FALSE, message=FALSE, include=FALSE}
 set.seed(1)
 mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
                   y = pull(trainData_pp, stroke),
@@ -190,10 +193,7 @@ mars.fit <- train(x = data.frame(trainData_pp[,1:10]),
                   trControl = ctrl)
 ```
 
-The cross-validation plot can be viewed in the appendix.
-
-
-The value of degree that maximizes the cross-validated AUC is `r mars.fit$bestTune$degree`, and the value of nprune that maximizes the cross-validated AUC is `r mars.fit$bestTune$nprune`.
+The MARS model has two tuning parameters: degree and nprune. Degree is the degree of interaction and nprune is the number of retained terms. We decided to test a grid of tuning parameters. The value of degree that maximizes the cross-validated AUC is `r mars.fit$bestTune$degree`, and the value of nprune that maximizes the cross-validated AUC is `r mars.fit$bestTune$nprune`. The cross-validation plot can be viewed in the appendix. 
 
 The model that maximizes the cross-validated AUC can be viewed in the appendix.
 
@@ -214,12 +214,7 @@ svml.fit <- train(stroke ~ . ,
 
 The model contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid. This plot can be viewed in the appendix.
 
-The final SVM with a linear kernel that maximizes the cross-validated AUC needed is displayed below.
-```{r}
-svml.fit$finalModel
-```
-
-It needed 421 support vectors to fit the line.
+The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix
 
 As a reference to understand the model better, let's take a look at a variable importance plot
 ```{r}
@@ -228,11 +223,15 @@ plot(svm_imp)
 ```
 
 ## SVM with Radial Kernel
+<<<<<<< HEAD
 Let's train a support vector machine with a radial kernel on the imputed training data. The support vector machine with a radial kernel has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary.
   
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters.
 
 
+=======
+We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. 
+>>>>>>> b50f9df776bb01d06210bc99d73030bb9a271b44
 ```{r include = FALSE}
 svmr.grid <- expand.grid(C = exp(seq(-2,3,len = 10)),
                          sigma = exp(seq(-8,-1,len = 20)))
@@ -246,21 +245,13 @@ svmr.fit <- train(stroke ~ . ,
                   trControl = ctrl)
 ```
 
-The cross-validation plot can be viewed in the appendix.
+The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters. The values of C and sigma that maximize the cross-validated AUC are `r round(svmr.fit$bestTune$C, 3)` and `r round(svmr.fit$bestTune$sigma, 5)`.The cross-validation plot can be viewed in the appendix.
 
-The values of C and sigma that maximize the cross-validated AUC are
-`r round(svmr.fit$bestTune$C, 3)` and
-`r round(svmr.fit$bestTune$sigma, 5)`.
-
-Let's get the support vector machine with radial kernel that maximizes the cross-validated AUC.
-```{r}
-svmr.fit$finalModel
-```
-
-It needed 387 support vectors to fit the model.
+The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
 
+<<<<<<< HEAD
 ## Boosting
 
 ```{r}
@@ -314,8 +305,11 @@ pdp.gbm <- gbmA.fit %>%
 
 With boosting for classification, we are combining weak learners to make a strong learner. In essence, we are repeatedly fitting classification trees to weighted versions of the training data and updating the weights in order to better classify previously misclassified observations. Through this process we are minimizing exponential loss over the whole distribution. 
 
+=======
+>>>>>>> b50f9df776bb01d06210bc99d73030bb9a271b44
 ## Random Forest
-```{r}
+For our final model, we trained a Random Forest model on the imputed training data.
+```{r, include=FALSE}
 rf.grid <- expand.grid(mtry = 1:10,
                        splitrule = "gini",
                        min.node.size = 1:6)
@@ -327,12 +321,12 @@ rf.fit <- train(stroke ~ . ,
                 tuneGrid = rf.grid,
                 metric = "ROC",
                 trControl = ctrl)
-
 ```
-The cross-validation plot can be viewed in the appendix.
+The tuning parameters for the model are mtry, splitrule, and min.node.size. For the splitrule we specified "gini" which corresponds to the gini index, since this is a classification problem. We then decided to test a grid of tuning parameters for mtry and min.node.size. mtry is the number of randomly selected predictors at each cut in the tree. We created a grid from 1 to 10, where 10 is the number of predictors in the dataset.  min.node.size controls the size of the tree, so we created a sequence of numbers to test different values. The parameter is the minimum number of observations in a terminal node.  The model then selects optimal values from the grid which are: mtry = `r rf.fit$bestTune$mtry` and min.node.size = `r rf.fit$bestTune$min.node.size`. The cross-validation plot can be viewed in the appendix.
+
+A limitation of random forests are that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
 
 ## Comparing Models
-
 To decide which model we will use to predict the response variable, let's use the AUC to compare model performance.
 ```{r}
 resamp <- resamples(list(glmn = model.glmn,
@@ -352,8 +346,7 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
   arrange(desc(AUC)) %>%
   knitr::kable()
 ```
-The penalized logistic regression model has the highest cross-validated AUC
-and will be used as the final model.
+The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
 
 From the summary table we see that the model with the highest median and mean ROC is the adaptive boosting model. 
@@ -440,12 +433,22 @@ tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) 
 plot(svml.fit, highlight = TRUE, xTrans = log)
 ```
 
+### SVM (Linear Kernel) Final Model
+```{r}
+svml.fit$finalModel
+```
+
 ### SVM (Radial Kernel) Cross-Validation Plot
 ```{r}
 myCol <- rainbow(20)
 myPar <- list(superpose.symbol = list(col = myCol),
               superpose.line = list(col = myCol))
 plot(svmr.fit, highlight = TRUE, par.settings = myPar)
+```
+
+### SVM (Radial Kernel) Final Model
+```{r}
+svmr.fit$finalModel
 ```
 
 ### Random Forest Cross-Validation Plot
