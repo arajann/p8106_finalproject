@@ -5,7 +5,7 @@ date: "May 8, 2022"
 output: pdf_document
 ---
 
-```{r}
+```{r, include=FALSE}
 library(tidyverse)
 library(caret)
 library(recipes)
@@ -23,7 +23,7 @@ library(pROC)
 For our project our team chose to use the stroke prediction dataset from [kaggle](https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset?datasetId=1120859&language=R). [Stroke](https://www.stroke.org/en/about-stroke#:~:text=Stroke%20is%20a%20disease%20that,or%20bursts%20(or%20ruptures)) is a disease that affects the arteries leading to and within the brain. It is the No. 5 cause of death and a leading cause of disability in the United States. Our motivation was to use this dataset to help identify key indicators that lead to strokes, since many are preventable. The questions we are trying to answer using this dataset are: 1) What are the key indicators or risk factors that lead to stroke occurrence? 2) Which classification model performs best in predicting these key indicators?
 
 ## Data Cleaning
-To properly analyze the data and build models to make predictions, the first step is to clean the data. The vast majority of the data was already fairly clean and ready for analysis, but we began by reading in the data, cleaning variable names, making categorical data factors, making continuous data of type numeric, and dropping missing values. We also decided to exclude the variable "id" since it will not be relevant to our analysis. 
+To properly analyze the data and build models to make predictions, the first step is to clean the data. The vast majority of the data was already fairly clean and ready for analysis, but we began by reading in the data, cleaning variable names, making categorical data factors, and making continuous data of type numeric. We also decided to exclude the variable "id" since it will not be relevant to our analysis. 
 ```{r, warning = FALSE, include=FALSE}
 # data cleaning
 stroke_data <- read_csv("./data/healthcare-dataset-stroke-data.csv")
@@ -200,7 +200,7 @@ The model that maximizes the cross-validated AUC can be viewed in the appendix.
 A limitation of MARS models is that they can suffer from high variance. 
 
 ## SVM with Linear Kernel
-The next model we fit to the imputed training data was a Support Vector Machine with a Linear Kernel. An assumption of the model is that the linearly separable. This is also a limitation of the model, as they don't perform well when this isn’t the case.
+The next model we fit to the imputed training data was a Support Vector Machine with a Linear Kernel. An assumption of the model is that the data is linearly separable. This is also a limitation of the model, as they don't perform well when this isn’t the case.
 ```{r include =FALSE}
 set.seed(1)
 svml.fit <- train(stroke ~ . , 
@@ -214,7 +214,7 @@ svml.fit <- train(stroke ~ . ,
 
 The model contains a tuning parameter C, also known as Cost, that determines the possible misclassifications. It essentially imposes a penalty to the model for making an error: the higher the value of C, the less likely it is that the SVM algorithm will misclassify a point. We decided to test a grid of tuning parameters for C. The model then selects the optimal value from the grid which maximizes the model AUC. That value is C = `r svml.fit$bestTune$C`. To display this visually, we created a plot of the model AUC for various values of the tuning parameter in the grid. This plot can be viewed in the appendix.
 
-The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix
+The final SVM with a linear kernel that maximizes the cross-validated AUC needed 421 support vectors to fit the line. This model can be viewed in the appendix.
 
 ## SVM with Radial Kernel
 We then trained a Support Vector Machine with a Radial Kernel on the imputed training data. 
@@ -233,7 +233,7 @@ svmr.fit <- train(stroke ~ . ,
 
 The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters. The values of C and sigma that maximize the cross-validated AUC are `r round(svmr.fit$bestTune$C, 3)` and `r round(svmr.fit$bestTune$sigma, 5)`.The cross-validation plot can be viewed in the appendix.
 
-The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix
+The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix.
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
 
@@ -254,11 +254,11 @@ rf.fit <- train(stroke ~ . ,
 ```
 The tuning parameters for the model are mtry, splitrule, and min.node.size. For the splitrule we specified "gini" which corresponds to the gini index, since this is a classification problem. We then decided to test a grid of tuning parameters for mtry and min.node.size. mtry is the number of randomly selected predictors at each cut in the tree. We created a grid from 1 to 10, where 10 is the number of predictors in the dataset.  min.node.size controls the size of the tree, so we created a sequence of numbers to test different values. The parameter is the minimum number of observations in a terminal node.  The model then selects optimal values from the grid which are: mtry = `r rf.fit$bestTune$mtry` and min.node.size = `r rf.fit$bestTune$min.node.size`. The cross-validation plot can be viewed in the appendix.
 
-A limitation of random forests are that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
+A limitation of random forests is that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
 
 ## Comparing Models
 To decide which model we will use to predict the response variable, let's use the AUC to compare model performance.
-```{r}
+```{r, echo=FALSE}
 resamp <- resamples(list(glmn = model.glmn,
                          mars = mars.fit,
                          svml = svml.fit,
@@ -279,18 +279,21 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
 The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
 Let's get its AUC on the imputed test dataset and plot the ROC curve.
-```{r}
+```{r message=FALSE, echo=FALSE}
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
 roc.glmn <- roc(trainData_pp$stroke,pred.glmn)
 auc <- c(roc.glmn$auc[1])
+modelName <- c("Penalized Logistic Regression ")
 
-modelName <- c("Penalized Logistic Regression")
-
-auc <- c(roc.gbmA$auc[1], roc.svml$auc[1],roc.svmr$auc[1],roc.mars$auc[1], roc.glmn$auc[1])
+ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelName,"(",round(auc,3),")"), name="Model (AUC)") +
+  geom_abline(intercept=0,slope=1,color="grey") +
+  theme_bw() +
+  labs(title = "AUC curve on Imputed Test Data") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 We will now make a Confusion Matrix
-```{r}
+```{r, echo=FALSE}
 test.pred.prob <- predict(model.glmn, newdata=testData_pp[,1:10],
                           type= "prob")[,2]
 test.pred <-  rep("No",length(test.pred.prob))
@@ -301,27 +304,25 @@ confusionMatrix(data=test.pred,
                 reference = testData_pp$stroke,
                 positive = "Yes")
 ```
-From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. 
-
-Plotting comparison of ROC Curves
-
-```{r}
-ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelNames,"(",round(auc,3),")"), name="Model (AUC)") +
-  geom_abline(intercept=0,slope=1,color="grey") +
-  theme_bw() +
-  labs(title = "AUC curve on Imputed Test Data") +
-  theme(plot.title = element_text(hjust = 0.5))
-
-
-```
+From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. From the confusion matrix, we see that our model is not able to actually
+detect stroke cases at a 50% threshold. We should consult with experts on 
+stroke to determine what threshold to use.
 
 ## Conclusion
-
+The main takeaways from this report are that age, hypertension, heart disease 
+and average glucose level each have a positive relationship with stroke. In
+considering the cross-validated model performance of penalized logistic
+regression, MARS, support vector machine with linear kernel, support vector
+machine with radial kernel, and random forest, penalized logistic regression
+has the highest cross-validated model performance. Additionally, for this
+model, the threshold needs to be adjusted, in consultation with experts on
+stroke, to detect stroke cases as the prevalence of stroke in this dataset
+is low.
 
 ## Appendix
 
 ### Penalized Logistic Regression Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 myCol <- rainbow(25)
 myPar <- list(superpose.symbol = list(col = myCol),
 superpose.line = list(col = myCol))
@@ -329,7 +330,7 @@ plot(model.glmn, par.settings = myPar, xTrans = log)
 ```
 
 ### MARS Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 ggplot(mars.fit) +
   theme_bw() +
   labs(title = "Cross-validated AUC as a function of \n Number of Terms Colored by Degree",
@@ -339,7 +340,7 @@ ggplot(mars.fit) +
 ```
 
 ### MARS Final Model
-```{r}
+```{r, echo=FALSE}
 final_model_mars <- coef(mars.fit$finalModel)
 terms_mars <- final_model_mars %>%
   data.frame() %>%
@@ -350,17 +351,17 @@ tibble(terms = terms_mars[1:5], est = pull(as_tibble(final_model_mars), value)) 
 ```
 
 ### SVM (Linear Kernel) Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 plot(svml.fit, highlight = TRUE, xTrans = log)
 ```
 
 ### SVM (Linear Kernel) Final Model
-```{r}
+```{r, echo=FALSE}
 svml.fit$finalModel
 ```
 
 ### SVM (Radial Kernel) Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 myCol <- rainbow(20)
 myPar <- list(superpose.symbol = list(col = myCol),
               superpose.line = list(col = myCol))
@@ -368,12 +369,12 @@ plot(svmr.fit, highlight = TRUE, par.settings = myPar)
 ```
 
 ### SVM (Radial Kernel) Final Model
-```{r}
+```{r, echo=FALSE}
 svmr.fit$finalModel
 ```
 
 ### Random Forest Cross-Validation Plot
-```{r}
+```{r, echo=FALSE}
 ggplot(rf.fit, highlight = TRUE)
 ```
 
