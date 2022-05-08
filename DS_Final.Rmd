@@ -176,6 +176,7 @@ coef <- coef(model.glmn$finalModel, model.glmn$bestTune$lambda)
 
 matrix = as.matrix(coef)
 df = as.data.frame(matrix)
+colnames(df) = c("Final Model Coefficients")
 
 knitr::kable(df[c(1,3:5,12), 1, drop = FALSE])
 ```
@@ -300,18 +301,20 @@ ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(mo
 We will now make a Confusion Matrix
 
 ```{r, echo=FALSE}
-test.pred.prob <- predict(model.glmn, newdata=testData_pp[,1:10],
-                          type= "prob")[,2]
+test.pred.prob <- predict(model.glmn, newdata = testData_pp[,1:10],
+                          type = "prob")[,2]
 test.pred <-  rep("No",length(test.pred.prob))
-test.pred[test.pred.prob>0.5] <- "Yes"
+test.pred[test.pred.prob > 0.5] <- "Yes"
 test.pred <- factor(test.pred,c("No","Yes"))
 
-confusionMatrix(data=test.pred,
+conf = confusionMatrix(data = test.pred,
                 reference = testData_pp$stroke,
                 positive = "Yes")
+
+knitr::kable(conf$table)
 ```
 
-From the confusion matrix we have a 95.14% accuracy, and thus a testing error rate of 4.86%. We see that our model is not able to actually detect stroke cases at a 50% threshold. We should consult with experts on stroke to determine what threshold to use.
+From the confusion matrix we have a `r conf$overall[1]*100`% accuracy, and thus a testing error rate of 4.86%. From the table, we can see that our model is not able to actually detect stroke cases at a 50% threshold. We should consult with experts on stroke to determine what threshold to use. The full confusion matrix is available in the appendix.
 
 ## Conclusion
 The main takeaways from this report are that age, hypertension, heart disease and average glucose level each have a positive relationship with stroke. In considering the cross-validated model performance of penalized logistic regression, MARS, support vector machine with a linear kernel, support vector machine with a radial kernel, and random forest, penalized logistic regression has the highest cross-validated model performance. Additionally, for this model, the threshold needs to be adjusted, in consultation with experts on stroke, to detect stroke cases as the prevalence of stroke in this dataset is low. Individuals cannot control aging, but they can focus on diminishing other risk factors such as hypertension, heart disease and average glucose level, with methods such as a healthy diet, frequent exercise, and stress reduction. These results were also largely expected due to significant scientific research conducted on risk factors for strokes. 
@@ -416,5 +419,18 @@ svmr.fit$finalModel
 ### Random Forest Cross-Validation Plot
 ```{r, echo=FALSE}
 ggplot(rf.fit, highlight = TRUE)
+```
+
+### Penalized Logistic Regression Confusion Matrix
+```{r}
+test.pred.prob <- predict(model.glmn, newdata = testData_pp[,1:10],
+                          type = "prob")[,2]
+test.pred <-  rep("No",length(test.pred.prob))
+test.pred[test.pred.prob > 0.5] <- "Yes"
+test.pred <- factor(test.pred,c("No","Yes"))
+
+confusionMatrix(data = test.pred,
+                reference = testData_pp$stroke,
+                positive = "Yes")
 ```
 
