@@ -295,7 +295,7 @@ modelName <- c("Penalized Logistic Regression ")
 ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(modelName,"(",round(auc,3),")"), name="Model (AUC)") +
   geom_abline(intercept=0,slope=1,color="grey") +
   theme_bw() +
-  labs(title = "AUC curve on Imputed Test Data") +
+  labs(title = "ROC curve on Imputed Test Data") +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
