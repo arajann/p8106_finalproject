@@ -109,7 +109,7 @@ work_type_plot + smoking_status_plot + gender_plot + plot_layout(ncol = 2)
 
 ```
 
-From the visualizations, we can see that among those who experienced strokes: a noticeably higher proportion of individuals had hypertension, heart disease, have ever been married, have formerly smoked or smoke currently. These variables could be potential indicators of stroke occurrence in the models.
+From the visualizations, we can see that among those who experienced strokes: a noticeably higher proportion of individuals had hypertension, heart disease, have ever been married, have formerly smoked or smoke currently. These variables could be potential indicators of stroke.
 
 # Modeling
 To begin the modeling process, we split the data into training (75%) and test (25%) data. Since all the remaining predictors in the dataset are potential risk factors for strokes, we decided to include them in all of the following models.
@@ -121,7 +121,7 @@ trainData <- stroke_data[rowTrain, ]
 testData <- stroke_data[-rowTrain, ]
 ```
 
-We can examine how many rows contain missing data in the training and test datasets.
+
 ```{r, include=FALSE}
 nrow_missing_train <- nrow(trainData %>% filter_all(any_vars(is.na(.))))
 nrow_missing_test <- nrow(testData %>% filter_all(any_vars(is.na(.))))
@@ -151,10 +151,11 @@ ctrl <- trainControl(method = "repeatedcv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
 ```
-The resampling method we used for all of the models is as follows: k-fold cross validation, two class summary (since the ROC curve is only for two classes), and classProbs = T, since AUC/ROC is the evaluation criteria. 
+The resampling method we used for all of the models is as follows: repeated k-fold cross validation, two class summary (since the ROC curve is only for two classes), and classProbs = T, since AUC/ROC is the evaluation criteria. 
 
 ## Penalized Logistic Regression
-The first model we fit to the dataset was Penalized Logistic Regression. Some assumptions of logistic regression include requiring the observations to be independent of each other, little or no multicollinearity among independent variables, and linearity of independent variables and log odds. These assumptions are also limitations of the model.
+The first model we fit to the dataset was Penalized Logistic Regression. Some assumptions of logistic regression include requiring the observations to be independent of each other, little or no multicollinearity among independent variables, and linearity of independent variables and the
+predicted log-odds. These assumptions are also limitations of the model.
 ```{r, include=FALSE}
 glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21), 
                         .lambda = exp(seq(-8, 2, length = 100)))
@@ -237,7 +238,7 @@ svmr.fit <- train(stroke ~ . ,
 
 The model has two tuning parameters: C and sigma. C quantifies the cost of misclassification and sigma is related to the flexibility of the decision boundary. We decided to test a grid of tuning parameters. The values of C and sigma that maximize the cross-validated AUC are `r round(svmr.fit$bestTune$C, 3)` and `r round(svmr.fit$bestTune$sigma, 5)`.The cross-validation plot can be viewed in the appendix.
 
-The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the line. This model can be viewed in the appendix.
+The final SVM with a radial kernel that maximizes the cross-validated AUC needed 387 support vectors to fit the model. This model can be viewed in the appendix.
 
 A limitation of SVMs is the black box nature of these functions. The use of kernels to separate the data makes them difficult to interpret. SVMs also do not directly provide probability estimates.
 
@@ -256,7 +257,7 @@ rf.fit <- train(stroke ~ . ,
                 metric = "ROC",
                 trControl = ctrl)
 ```
-The tuning parameters for the model are mtry, splitrule, and min.node.size. For the splitrule we specified "gini" which corresponds to the gini index, since this is a classification problem. We then decided to test a grid of tuning parameters for mtry and min.node.size. mtry is the number of randomly selected predictors at each cut in the tree. We created a grid from 1 to 10, where 10 is the number of predictors in the dataset.  min.node.size controls the size of the tree, so we created a sequence of numbers to test different values. The parameter is the minimum number of observations in a terminal node.  The model then selects optimal values from the grid which are: mtry = `r rf.fit$bestTune$mtry` and min.node.size = `r rf.fit$bestTune$min.node.size`. The cross-validation plot can be viewed in the appendix.
+The tuning parameters for the model are mtry, splitrule, and min.node.size. For the splitrule we specified "gini" which corresponds to the gini index, since this is a classification problem. We then decided to test a grid of tuning parameters for mtry and min.node.size. mtry is the number of randomly selected predictors at each cut in the tree. We created a grid from 1 to 10, where 10 is the number of predictors in the dataset.  min.node.size controls the size of the tree, so we created a sequence of numbers to test different values. The parameter is the minimum number of observations in a terminal node. The values of these parameters that maximize the cross-validated AUC are: mtry = `r rf.fit$bestTune$mtry` and min.node.size = `r rf.fit$bestTune$min.node.size`. The cross-validation plot can be viewed in the appendix.
 
 A limitation of random forests is that it can overfit datasets that are particularly noisy. In addition, for data including categorical predictor variables with different number of levels, random forests are biased in favor of those predictors with more levels.
 
@@ -283,7 +284,7 @@ tibble(model = c("Penalized Logistic Regression", "MARS",
 
 The penalized logistic regression model has the highest cross-validated AUC and will be used as the final model.
 
-Let's get its AUC on the imputed test dataset and plot the ROC curve.
+Let's get its AUC on the imputed test dataset and plot the ROC curve.  
 
 ```{r message=FALSE, echo=FALSE}
 pred.glmn <- predict(model.glmn, newdata=trainData_pp, type= "prob")[,1]
@@ -298,7 +299,8 @@ ggroc(list(roc.glmn),legacy.axes = TRUE) + scale_color_discrete(labels=paste0(mo
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-We will now make a Confusion Matrix
+Further, we can generate a confusion matrix using the penalized regression
+model to make predictions on the imputed test dataset.
 
 ```{r, echo=FALSE}
 test.pred.prob <- predict(model.glmn, newdata = testData_pp[,1:10],
@@ -317,7 +319,7 @@ knitr::kable(conf$table)
 From the confusion matrix we have a `r conf$overall[1]*100`% accuracy, and thus a testing error rate of 4.86%. From the table, we can see that our model is not able to actually detect stroke cases at a 50% threshold. We should consult with experts on stroke to determine what threshold to use. The full confusion matrix is available in the appendix.
 
 ## Conclusion
-The main takeaways from this report are that age, hypertension, heart disease and average glucose level each have a positive relationship with stroke. In considering the cross-validated model performance of penalized logistic regression, MARS, support vector machine with a linear kernel, support vector machine with a radial kernel, and random forest, penalized logistic regression has the highest cross-validated model performance. Additionally, for this model, the threshold needs to be adjusted, in consultation with experts on stroke, to detect stroke cases as the prevalence of stroke in this dataset is low. Individuals cannot control aging, but they can focus on diminishing other risk factors such as hypertension, heart disease and average glucose level, with methods such as a healthy diet, frequent exercise, and stress reduction. These results were also largely expected due to significant scientific research conducted on risk factors for strokes. 
+The main takeaways from this report are that age, hypertension, heart disease and average glucose level each have a positive relationship with stroke. In considering the cross-validated model performance of penalized logistic regression, MARS, support vector machine with a linear kernel, support vector machine with a radial kernel, and random forest, penalized logistic regression has the highest cross-validated model performance. Additionally, for this model, the threshold needs to be adjusted, in consultation with experts on stroke, to detect stroke cases as the prevalence of stroke in this dataset is low. Individuals cannot control aging, but they can focus on diminishing other risk factors such as hypertension, heart disease and average glucose level, with methods such as a healthy diet, prescribed medications, frequent exercise, and stress reduction. These results were also largely expected due to significant scientific research conducted on risk factors for stroke. 
 
 ## Appendix
 
@@ -418,7 +420,12 @@ svmr.fit$finalModel
 
 ### Random Forest Cross-Validation Plot
 ```{r, echo=FALSE}
-ggplot(rf.fit, highlight = TRUE)
+ggplot(rf.fit, highlight = TRUE) +
+  theme_bw() +
+  labs(title = "Cross-validated AUC as a function of \n Number of Randomly Selected Predictors by \nMinimal Node Size",
+       x = "Number of Randomly Selected Predictors",
+       y = "Cross-validated AUC") +
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ### Penalized Logistic Regression Confusion Matrix
